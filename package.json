@@ -1,0 +1,46 @@
+{
+  "name": "labelixa",
+  "version": "0.2.3",
+  "description": "Render, validate and convert Zebra ZPL label code via the Labelixa API — no printer required.",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "bin/labelixa.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "check-publish": "node scripts/check-publish.mjs",
+    "prepublishOnly": "node scripts/check-publish.mjs"
+  },
+  "keywords": [
+    "zpl",
+    "zebra",
+    "label",
+    "barcode",
+    "printing",
+    "epl",
+    "thermal-printer"
+  ],
+  "license": "MIT",
+  "homepage": "https://labelixa.com",
+  "bugs": {
+    "url": "https://labelixa.com/docs/api",
+    "email": "support@labelixa.com"
+  },
+  "bin": {
+    "labelixa": "bin/labelixa.mjs"
+  }
+}
