@@ -1,7 +1,7 @@
 {
   "name": "labelixa",
-  "version": "0.2.3",
-  "description": "Render, validate and convert Zebra ZPL label code via the Labelixa API — no printer required.",
+  "version": "0.3.0",
+  "description": "Render, validate and convert Zebra ZPL (and EPL/TSPL/CPCL) label code via the Labelixa API — SDK and CI-friendly CLI, no printer required.",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
@@ -32,7 +32,11 @@
     "barcode",
     "printing",
     "epl",
-    "thermal-printer"
+    "thermal-printer",
+    "tspl",
+    "cpcl",
+    "cli",
+    "linter"
   ],
   "license": "MIT",
   "homepage": "https://labelixa.com",

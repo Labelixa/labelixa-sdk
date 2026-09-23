@@ -14,15 +14,25 @@ export declare class QuotaExceeded extends LabelixaError {
               action: string | null);
 }
 
+export type Language = "zpl" | "epl" | "tspl" | "cpcl";
+/** Printer languages the API renders and lints; ZPL is the default. */
+export declare const LANGUAGES: readonly Language[];
+
 export interface ClientOptions {
   /** lbx_ API key; omit for anonymous (free, rate-limited) use. */
   apiKey?: string;
   baseUrl?: string;
+  /** Sent as the `X-Client` header (e.g. "cli/0.3.0"); attributes usage
+   *  to an integration, never to a person. */
+  clientName?: string;
   /** Test hook; normal use omits it. */
   fetch?: typeof fetch;
 }
 
 export interface RenderOptions {
+  /** "zpl" (default) | "epl" | "tspl" | "cpcl". For the last three the
+   *  label size comes from the code; dpmm/width/height are ignored. */
+  language?: Language;
   dpmm?: number;
   widthIn?: number;
   heightIn?: number;
@@ -30,10 +40,10 @@ export interface RenderOptions {
 
 export declare class Client {
   constructor(opts?: ClientOptions);
-  renderPng(zpl: string, opts?: RenderOptions & { index?: number; rotation?: number }): Promise<Uint8Array>;
+  renderPng(code: string, opts?: RenderOptions & { index?: number; rotation?: number }): Promise<Uint8Array>;
   /** index null (default) renders ALL labels; quota is charged per label. */
   renderPdf(zpl: string, opts?: RenderOptions & { index?: number | null }): Promise<Uint8Array>;
-  validate(zpl: string, opts?: RenderOptions): Promise<Record<string, unknown>>;
+  validate(code: string, opts?: RenderOptions): Promise<Record<string, unknown>>;
   toEpl(zpl: string, opts?: RenderOptions): Promise<string>;
   /** svg returns a string, png returns bytes. Invalid input throws with
    *  the server's X-Warnings text (the API returns 200 + error image). */
