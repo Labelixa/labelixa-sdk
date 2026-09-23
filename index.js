@@ -60,18 +60,33 @@ async function errorFromResponse(response) {
 /** g-format like Python's :g — 4.0 -> "4", 2.25 -> "2.25". */
 const g = (n) => String(Number(n));
 
+/** Printer languages the API renders and lints. ZPL is the default. */
+export const LANGUAGES = ["zpl", "epl", "tspl", "cpcl"];
+
+function checkLanguage(language) {
+  if (!LANGUAGES.includes(language)) {
+    throw new LabelixaError(0,
+      `Unknown language "${language}"; expected one of ${LANGUAGES.join(", ")}`);
+  }
+  return language;
+}
+
 export class Client {
   /**
    * @param {object} [opts]
    * @param {string} [opts.apiKey] lbx_ API key; omit for anonymous use
    * @param {string} [opts.baseUrl]
+   * @param {string} [opts.clientName] sent as `X-Client` (e.g. "cli/0.3.0")
+   *   so usage is attributed to the integration, never to a person
    * @param {typeof fetch} [opts.fetch] test hook; normal use omits it
    */
-  constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, fetch: fetchImpl } = {}) {
+  constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, clientName,
+                fetch: fetchImpl } = {}) {
     this._baseUrl = baseUrl.replace(/\/+$/, "");
     this._fetch = fetchImpl ?? globalThis.fetch;
     this._headers = { "User-Agent": `labelixa-node/${VERSION}` };
     if (apiKey) this._headers["X-API-Key"] = apiKey;
+    if (clientName) this._headers["X-Client"] = String(clientName);
   }
 
   async _post(path, body, extraHeaders = {}) {
@@ -83,13 +98,27 @@ export class Client {
     });
   }
 
-  /** Renders a single label to PNG. @returns {Promise<Uint8Array>} */
-  async renderPng(zpl, { dpmm = 8, widthIn = 4, heightIn = 6, index = 0,
-                         rotation = 0 } = {}) {
-    const extra = rotation ? { "X-Rotation": String(rotation) } : {};
-    const res = await this._post(
-      `/v1/printers/${dpmm}dpmm/labels/${g(widthIn)}x${g(heightIn)}/${index}`,
-      zpl, extra);
+  /**
+   * Renders a single label to PNG. `language` selects the printer
+   * language: "zpl" (default) uses the Labelary-compatible endpoint with
+   * density and size; "epl", "tspl" and "cpcl" use `/v1/<language>/render`,
+   * where the label size comes from the code itself and only `index`
+   * applies (EPL previews at 203 dpi; the server documents each engine's
+   * scope at https://labelixa.com/docs/api).
+   * @returns {Promise<Uint8Array>}
+   */
+  async renderPng(code, { language = "zpl", dpmm = 8, widthIn = 4, heightIn = 6,
+                          index = 0, rotation = 0 } = {}) {
+    checkLanguage(language);
+    let res;
+    if (language === "zpl") {
+      const extra = rotation ? { "X-Rotation": String(rotation) } : {};
+      res = await this._post(
+        `/v1/printers/${dpmm}dpmm/labels/${g(widthIn)}x${g(heightIn)}/${index}`,
+        code, extra);
+    } else {
+      res = await this._post(`/v1/${language}/render?index=${index}`, code);
+    }
     if (res.status !== 200) throw await errorFromResponse(res);
     return new Uint8Array(await res.arrayBuffer());
   }
@@ -110,14 +139,26 @@ export class Client {
     return new Uint8Array(await res.arrayBuffer());
   }
 
-  /** Lints ZPL; returns the structured diagnostics report. */
-  async validate(zpl, { dpmm = 8, widthIn = 4, heightIn = 6 } = {}) {
-    // The endpoint reads the label size from the `w`/`h` query
-    // parameters (https://labelixa.com/docs/api). Unknown parameters are
-    // ignored silently by the server, so any other spelling would make
-    // every check run against the 4x6 default without an error.
-    const q = `?dpmm=${dpmm}&w=${g(widthIn)}&h=${g(heightIn)}`;
-    const res = await this._post(`/v1/diagnostics${q}`, zpl);
+  /**
+   * Lints label code; returns the structured diagnostics report
+   * (`diagnostics` list + `ozet` summary with `error`/`warning`/`info`
+   * counts). `language` picks the linter: ZPL takes density and size,
+   * the other three read the size from the code.
+   */
+  async validate(code, { language = "zpl", dpmm = 8, widthIn = 4,
+                         heightIn = 6 } = {}) {
+    checkLanguage(language);
+    let res;
+    if (language === "zpl") {
+      // The endpoint reads the label size from the `w`/`h` query
+      // parameters (https://labelixa.com/docs/api). Unknown parameters are
+      // ignored silently by the server, so any other spelling would make
+      // every check run against the 4x6 default without an error.
+      const q = `?dpmm=${dpmm}&w=${g(widthIn)}&h=${g(heightIn)}`;
+      res = await this._post(`/v1/diagnostics${q}`, code);
+    } else {
+      res = await this._post(`/v1/${language}/diagnostics`, code);
+    }
     if (res.status !== 200) throw await errorFromResponse(res);
     return JSON.parse(await res.text());
   }

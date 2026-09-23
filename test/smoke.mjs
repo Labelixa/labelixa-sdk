@@ -4,7 +4,7 @@
 // cannot rot silently.
 import { createServer } from "node:http";
 import assert from "node:assert/strict";
-import { Client, LabelixaError, QuotaExceeded } from "../index.js";
+import { Client, LabelixaError, LANGUAGES, QuotaExceeded } from "../index.js";
 
 const baseUrl = process.argv[2];
 assert.ok(baseUrl, "usage: node smoke.mjs http://127.0.0.1:PORT");
@@ -15,6 +15,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const GAP = 450;
 
 const c = new Client({ baseUrl });
+assert.deepEqual(LANGUAGES, ["zpl", "epl", "tspl", "cpcl"]);
 
 // PNG
 const png = await c.renderPng(ZPL, { widthIn: 2, heightIn: 1 });
@@ -79,15 +80,35 @@ try {
   fake.close();
 }
 
-// The API key is sent as a header
+// The API key is sent as a header; clientName becomes X-Client (0.3.0)
 const seen = {};
 const fakeFetch = async (url, opts) => {
   seen.key = opts.headers["X-API-Key"];
+  seen.client = opts.headers["X-Client"];
+  seen.url = String(url);
+  if (seen.url.includes("/diagnostics")) {
+    return new Response('{"diagnostics":[],"ozet":{"error":0}}', { status: 200 });
+  }
   return new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { status: 200 });
 };
 await new Client({ apiKey: "lbx_test", baseUrl: "http://x",
-                   fetch: fakeFetch }).renderPng(ZPL);
+                   fetch: fakeFetch, clientName: "cli/9.9.9" }).renderPng(ZPL);
 assert.equal(seen.key, "lbx_test");
+assert.equal(seen.client, "cli/9.9.9");
+
+// 0.3.0: `language` routes to the language endpoints; unknown language is
+// rejected locally (no request is made).
+await new Client({ baseUrl: "http://x", fetch: fakeFetch })
+  .renderPng("N\nP1\n", { language: "epl", index: 2 });
+assert.equal(seen.url, "http://x/v1/epl/render?index=2");
+await new Client({ baseUrl: "http://x", fetch: fakeFetch })
+  .validate("SIZE 4,6\n", { language: "tspl" });
+assert.equal(seen.url, "http://x/v1/tspl/diagnostics");
+seen.url = null;
+await assert.rejects(
+  () => new Client({ baseUrl: "http://x", fetch: fakeFetch }).validate(ZPL, { language: "svg" }),
+  (e) => e instanceof LabelixaError && /Unknown language/.test(e.message));
+assert.equal(seen.url, null, "an unknown language must not reach the network");
 
 
 // ---- 0.2.0 ----------------------------------------------------------------

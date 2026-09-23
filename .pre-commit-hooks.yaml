@@ -1,0 +1,19 @@
+# pre-commit hooks for the labelixa CLI (https://labelixa.com/docs/cli).
+#
+# pre-commit installs this repository as an npm package (language: node)
+# and runs the `labelixa` binary from package.json. No secret is needed:
+# without LABELIXA_API_KEY the anonymous rate limit applies. Files are sent
+# to the API for linting and are not stored.
+- id: labelixa-validate
+  name: labelixa validate
+  description: >-
+    Lint ZPL/EPL/TSPL/CPCL label files with the Labelixa API. Fails at or
+    above the --fail-on severity (default: error); the language is chosen
+    from the file extension. Add args: [--fail-on, warning] to be stricter.
+  entry: labelixa validate
+  language: node
+  files: \.(zpl|prn|epl|epl2|tspl|tsp|cpcl)$
+  # One process at a time: the API's per-second rate limit is shared by
+  # every parallel hook instance, so parallel runs would only earn 429s.
+  require_serial: true
+  minimum_pre_commit_version: "2.9.0"
