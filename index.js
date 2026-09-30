@@ -71,6 +71,25 @@ function checkLanguage(language) {
   return language;
 }
 
+/**
+ * The API key travels only over https, or plain http to a loopback address
+ * (local development). Anywhere else it would cross the network readable,
+ * so the client refuses to be built instead of sending it.
+ */
+function checkKeyTransport(baseUrl) {
+  let u;
+  try { u = new URL(baseUrl); } catch {
+    throw new Error(`invalid base URL: ${baseUrl}`);
+  }
+  if (u.protocol === "https:") return;
+  const host = u.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  const loopback = host === "localhost" || host === "::1"
+    || /^127(\.\d{1,3}){3}$/.test(host);
+  if (u.protocol === "http:" && loopback) return;
+  throw new Error(`refusing to send the API key to ${baseUrl}: use an https ` +
+                  "base URL (plain http is accepted only for localhost)");
+}
+
 export class Client {
   /**
    * @param {object} [opts]
@@ -83,9 +102,17 @@ export class Client {
   constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, clientName,
                 fetch: fetchImpl } = {}) {
     this._baseUrl = baseUrl.replace(/\/+$/, "");
-    this._fetch = fetchImpl ?? globalThis.fetch;
+    const raw = fetchImpl ?? globalThis.fetch;
+    // Redirects are never followed. fetch removes only `Authorization`
+    // when a redirect changes origin; the X-API-Key header would be sent to
+    // wherever a 3xx points, plain http included. The API does not
+    // redirect, so a 3xx surfaces as a LabelixaError with its status.
+    this._fetch = (url, init) => raw(url, { ...init, redirect: "manual" });
     this._headers = { "User-Agent": `labelixa-node/${VERSION}` };
-    if (apiKey) this._headers["X-API-Key"] = apiKey;
+    if (apiKey) {
+      checkKeyTransport(this._baseUrl);
+      this._headers["X-API-Key"] = apiKey;
+    }
     if (clientName) this._headers["X-Client"] = String(clientName);
   }
 

@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.labelixa</groupId>
+  <artifactId>labelixa</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <name>Labelixa</name>
+  <description>Thin Java client for the Labelixa API: render, validate and convert ZPL, EPL, TSPL and CPCL label code without a printer.</description>
+  <url>https://labelixa.com</url>
+  <inceptionYear>2026</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>labelixa</id>
+      <name>Labelixa</name>
+      <email>support@labelixa.com</email>
+      <url>https://labelixa.com</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>https://github.com/Labelixa/labelixa-sdk</url>
+    <connection>scm:git:https://github.com/Labelixa/labelixa-sdk.git</connection>
+    <developerConnection>scm:git:https://github.com/Labelixa/labelixa-sdk.git</developerConnection>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/Labelixa/labelixa-sdk/issues</url>
+  </issueManagement>
+
+  <!--
+    Java 11 is the floor because java.net.http arrived there. No
+    dependencies, and that is a decision rather than a shortcut: a label
+    client is not worth a dependency tree in someone else's build. The
+    JDK has no JSON API, so a small parser ships inside the package
+    instead of pulling Jackson or Gson onto every caller's classpath.
+
+    Warnings are errors (-Xlint:all -Werror): an unchecked warning in a
+    client library becomes a ClassCastException in the caller's job.
+  -->
+  <properties>
+    <maven.compiler.release>11</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+  </properties>
+
+  <!-- No <dependencies> block on purpose: everything used ships with the JDK. -->
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.14.0</version>
+        <configuration>
+          <compilerArgs>
+            <arg>-Xlint:all</arg>
+            <arg>-Werror</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>com.labelixa</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <!--
+        The tests live in test/Tests.java as a plain main class and run
+        with javac + java (see README, "Running the tests"): the package
+        has no runtime dependency and adding JUnit only for the tests
+        would put a dependency resolution step in front of every build.
+        Surefire is pinned so Maven does not pick a default version, and
+        finds nothing under src/test.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-install-plugin</artifactId>
+        <version>3.1.4</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.1.4</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!--
+      Release to Maven Central: mvn -P release deploy
+
+      Needs a GPG key on the machine and Central Portal credentials in
+      ~/.m2/settings.xml under the server id "central". Source and
+      Javadoc jars are Central requirements, not options.
+
+      The publish guard runs first (validate phase) and stops the build
+      when a file heading for the package carries an internal ticket id,
+      a dated audit note or non-English text — the Maven counterpart of
+      npm's prepublishOnly. If python3 is missing the exec fails and the
+      release stops; failing closed is the only safe direction for a
+      guard.
+    -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.5.0</version>
+            <executions>
+              <execution>
+                <id>check-publish-language</id>
+                <phase>validate</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>python3</executable>
+                  <arguments>
+                    <argument>${project.basedir}/../../agent/scripts/check_publish.py</argument>
+                    <argument>${project.basedir}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.11.2</version>
+            <configuration>
+              <doclint>all</doclint>
+              <failOnWarnings>true</failOnWarnings>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.7</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.7.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <!-- Validate and upload, then publish by hand from the portal after a last look. -->
+              <autoPublish>false</autoPublish>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
