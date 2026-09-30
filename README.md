@@ -22,7 +22,7 @@ await writeFile("label.png", await c.renderPng(zpl, { widthIn: 4, heightIn: 6 })
 
 // Lint before printing
 const report = await c.validate(zpl);
-for (const d of report.diagnostics) console.log(d.severity, d.message);
+for (const d of report.diagnostics) console.log(d.severity, d.mesaj, d.url);  // wire field names are stable
 
 // Multi-label PDF, ZPL -> EPL2 translation
 const pdf = await c.renderPdf(zpl);
@@ -33,6 +33,11 @@ const svg = await c.barcode("HELLO-123", { type: "code128" });
 const lang = await c.languageDetect(rawLabelCode);   // confidence TIER, not %
 const risk = await c.compatibility(zpl, "zebra/zd421"); // manufacturer/model; risk report, not "it works"
 ```
+
+The API key is only sent over https (plain `http` is accepted for
+`localhost` only; any other `http` base URL with a key throws), and
+redirects are never followed, so a server cannot forward the key to
+another host.
 
 ## Command line (CI)
 
@@ -70,7 +75,7 @@ label files are linted before they are committed. Add to
 ```yaml
 repos:
   - repo: https://github.com/Labelixa/labelixa-sdk
-    rev: v0.3.0
+    rev: v0.3.1
     hooks:
       - id: labelixa-validate
         # optional: fail on warnings too

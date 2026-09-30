@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A plain console runner, not xunit or NUnit — the same call the PHP
+    client made and for the same reason: the package has no runtime
+    dependencies, and adding a test framework would mean a NuGet restore
+    in CI to measure a handful of URLs and headers. Zero PackageReference
+    means `dotnet test`'s usual network step is not needed at all.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>Labelixa.Tests</RootNamespace>
+    <AssemblyName>Labelixa.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Labelixa/Labelixa.csproj" />
+  </ItemGroup>
+
+</Project>

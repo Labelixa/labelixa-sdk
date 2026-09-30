@@ -91,10 +91,37 @@ const fakeFetch = async (url, opts) => {
   }
   return new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { status: 200 });
 };
-await new Client({ apiKey: "lbx_test", baseUrl: "http://x",
+await new Client({ apiKey: "lbx_test", baseUrl: "https://x",
                    fetch: fakeFetch, clientName: "cli/9.9.9" }).renderPng(ZPL);
 assert.equal(seen.key, "lbx_test");
 assert.equal(seen.client, "cli/9.9.9");
+
+// The key only travels over https (plain http for loopback only), and no
+// request follows a redirect: fetch strips only Authorization on a
+// cross-origin redirect, X-API-Key would be carried along.
+for (const ok of ["https://api.labelixa.com", "http://127.0.0.1:8000",
+                  "http://localhost:8000", "http://[::1]:8000"]) {
+  new Client({ apiKey: "lbx_test", baseUrl: ok, fetch: fakeFetch });
+}
+for (const bad of ["http://api.labelixa.com", "http://10.0.0.5",
+                   "http://localhost.evil.test"]) {
+  assert.throws(() => new Client({ apiKey: "lbx_test", baseUrl: bad, fetch: fakeFetch }),
+                /https/, `key accepted for ${bad}`);
+}
+new Client({ baseUrl: "http://x", fetch: fakeFetch });   // anonymous: allowed
+{
+  const inits = [];
+  const redirecting = async (url, init) => {
+    inits.push(init);
+    return new Response("", { status: 307, headers: { Location: "http://evil.test/" } });
+  };
+  const rc = new Client({ apiKey: "lbx_test", fetch: redirecting });
+  await assert.rejects(() => rc.renderPng(ZPL),
+                       (e) => e instanceof LabelixaError && e.status === 307);
+  await assert.rejects(() => rc.barcode("1"), (e) => e instanceof LabelixaError);
+  assert.ok(inits.length === 2 && inits.every((i) => i.redirect === "manual"),
+            "a request may follow redirects");
+}
 
 // 0.3.0: `language` routes to the language endpoints; unknown language is
 // rejected locally (no request is made).

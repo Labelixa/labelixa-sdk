@@ -6,15 +6,78 @@ on:
   pull_request:
 
 jobs:
-  test:
+  # npm `labelixa` (repository root): no dependencies and no lock file.
+  node:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: "22"
-      # No dependencies and no lock file: nothing to install.
       - run: node scripts/check-publish.mjs
       # Smoke test against the live API (the package has no mocks by design:
       # if the API contract drifts, this is where it shows).
       - run: node test/smoke.mjs https://api.labelixa.com
+
+  # Go module github.com/Labelixa/labelixa-sdk/go — tests use a local
+  # httptest server, no network. No dependencies, so no module cache.
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5.6.0
+        with:
+          go-version: "1.24"
+          cache: false
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test ./...
+
+  # NuGet package Labelixa — tests use a fake HttpMessageHandler, no network.
+  csharp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: csharp
+    env:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9  # v4.3.1
+        with:
+          dotnet-version: "8.0.x"
+      - run: dotnet build src/Labelixa/Labelixa.csproj -c Release
+      - run: dotnet run --project test/Labelixa.Tests/Labelixa.Tests.csproj -c Release
+
+  # Maven artifact com.labelixa:labelixa — tests use a JDK HttpServer on
+  # 127.0.0.1, no network; plain main class, no test framework.
+  java:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: java
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3  # v4.9.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: mvn -B -q package
+      - run: |
+          mkdir -p target/test-classes
+          javac -Xlint:all -Werror -d target/test-classes -cp target/classes test/Tests.java
+          java -cp target/classes:target/test-classes Tests
+
+  # Publish guard for the non-npm trees: English-only, no internal notes.
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - run: |
+          python3 scripts/check_publish.py go
+          python3 scripts/check_publish.py csharp
+          python3 scripts/check_publish.py java

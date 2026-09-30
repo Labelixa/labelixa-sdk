@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    net8.0 only, and that is a decision rather than a shortcut.
+
+    netstandard2.0 would reach .NET Framework, but System.Text.Json is a
+    NuGet package there, and this client family's rule is that a label
+    client is not worth a package in someone else's build. A .NET
+    Framework target belongs in the queue as its own decision, not as a
+    dependency added quietly here.
+
+    TreatWarningsAsErrors is on because a nullable warning in a client
+    library becomes a NullReferenceException in the caller's job.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>Labelixa</RootNamespace>
+    <AssemblyName>Labelixa</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Labelixa</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Labelixa</Authors>
+    <Company>Labelixa</Company>
+    <Description>Thin .NET client for the Labelixa API: render, validate and convert ZPL, EPL, TSPL and CPCL label code without a printer.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://labelixa.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Labelixa/labelixa-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>zpl;zebra;label;barcode;printing;epl;tspl;cpcl;thermal-printer</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <!--
+    Publish guard, the NuGet counterpart of npm's prepublishOnly and the
+    Python hatchling build hook: `dotnet pack` runs the shared scanner
+    first and the pack fails when a file heading for the package carries
+    an internal ticket id, a dated audit note or non-English text.
+
+    It runs before Pack rather than before Build so an ordinary developer
+    build stays fast; the gate is at the door that leads outside. If
+    python3 is missing the Exec fails and the pack stops — failing closed
+    is the only safe direction for a guard.
+  -->
+  <Target Name="CheckPublishLanguage" BeforeTargets="Pack">
+    <Exec Command="python3 &quot;$(MSBuildThisFileDirectory)../../../../agent/scripts/check_publish.py&quot; &quot;$(MSBuildThisFileDirectory)../..&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)" />
+  </Target>
+
+</Project>

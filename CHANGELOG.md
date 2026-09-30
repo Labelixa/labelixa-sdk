@@ -4,6 +4,24 @@ All notable changes to the `labelixa` npm package are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-09-30
+
+### Security
+- The API key is only sent over https. A `Client` with a key and a plain
+  `http` base URL throws, except for `localhost` and loopback addresses
+  (local development). The CLI inherits the rule through
+  `LABELIXA_API_URL`.
+- Requests never follow redirects. fetch removes only `Authorization` when
+  a redirect changes origin; the `X-API-Key` header would have been
+  carried along. A 3xx surfaces as a `LabelixaError` with its status.
+
+### Fixed
+- README: the diagnostics example read `d.message`, a field the API does
+  not return (it printed `undefined`). The wire field is `mesaj`; the
+  example now prints `severity`, `mesaj` and `url`.
+- README: the pre-commit example pins `rev: v0.3.1` (the tag of this
+  release); the hook itself is unchanged.
+
 ## [0.3.0] - 2026-09-22
 
 ### Added
