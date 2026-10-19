@@ -13,7 +13,8 @@ files and the source directory is mirrored publicly) and fails (exit code
 
 Scanned: every text file under the root except directories named .git,
 node_modules, __pycache__, dist, test, testdata, scripts, bin or obj, Go
-test files (*_test.go) and binaries. `contract.go` is exempt from the WORD rule only:
+test files (*_test.go), the Business Central test app (core-test) and
+binaries. `contract.go` (and its copies) is exempt from the WORD rule only:
 it holds the wire vocabulary (JSON keys, legacy command names) that
 existing installations depend on and that cannot be renamed; the other
 rules still apply to it.
@@ -49,14 +50,17 @@ WORD = re.compile(r"\b(?:" + "|".join(WORDS) + r")\b", re.IGNORECASE)
 # `.gradle`, `.intellijPlatform`, `.kotlin` and `build` are Gradle's own
 # caches and outputs for the JetBrains plugin: machine-specific, never
 # published.
+# `core-test` is the Business Central test app (bc/): test code like
+# `test/` and `*_test.go`, never published.
 SKIP_DIRS = {".git", "node_modules", "__pycache__", "dist", "test", "testdata",
              "scripts", "bin", "obj", "target", "build", ".gradle",
-             ".intellijPlatform", ".kotlin"}
+             ".intellijPlatform", ".kotlin", "core-test", ".alpackages"}
 BINARY = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".gz",
           ".exe", ".woff", ".woff2", ".ttf"}
 # Files holding the frozen wire vocabulary: exempt from the WORD rule only.
-# `Contract.kt` is the JetBrains plugin's copy of the same vocabulary.
-WORD_EXEMPT = {"contract.go", "Contract.kt"}
+# `Contract.kt` is the JetBrains plugin's copy of the same vocabulary;
+# `LBXWire.Codeunit.al` is the Business Central app's.
+WORD_EXEMPT = {"contract.go", "Contract.kt", "LBXWire.Codeunit.al"}
 
 
 def _files(root: Path) -> list[Path]:

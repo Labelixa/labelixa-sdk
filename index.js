@@ -14,6 +14,15 @@
 import { createRequire } from "node:module";
 
 const DEFAULT_BASE_URL = "https://api.labelixa.com";
+
+// Trailing slashes are stripped with a loop, not with /\/+$/: that regex
+// backtracks polynomially on a long run of slashes (CodeQL
+// js/polynomial-redos) and the base URL is caller-supplied configuration.
+function stripTrailingSlashes(value) {
+  let out = String(value);
+  while (out.endsWith("/")) out = out.slice(0, -1);
+  return out;
+}
 // Single source of truth for the version: package.json.
 const VERSION = createRequire(import.meta.url)("./package.json").version;
 
@@ -101,7 +110,7 @@ export class Client {
    */
   constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, clientName,
                 fetch: fetchImpl } = {}) {
-    this._baseUrl = baseUrl.replace(/\/+$/, "");
+    this._baseUrl = stripTrailingSlashes(baseUrl);
     const raw = fetchImpl ?? globalThis.fetch;
     // Redirects are never followed. fetch removes only `Authorization`
     // when a redirect changes origin; the X-API-Key header would be sent to

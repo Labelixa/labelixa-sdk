@@ -115,8 +115,9 @@ function segmentToRegExp(segment) {
   for (const ch of segment) {
     if (ch === "*") re += "[^/]*";
     else if (ch === "?") re += "[^/]";
-    else if (/[.+^${}()|\\/[\]]/.test(ch)) re += "\\" + ch;
-    else re += ch;
+    // Every other character is escaped with the standard idiom so the
+    // pattern text never reaches RegExp unescaped (CodeQL js/regex-injection).
+    else re += ch.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&");
   }
   return new RegExp(re + "$");
 }
