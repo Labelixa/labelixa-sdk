@@ -195,6 +195,28 @@ func TestOtherFailuresKeepTheServerMessage(t *testing.T) {
 	}
 }
 
+func TestJSONErrorAnswerKeepsOnlyTheSentence(t *testing.T) {
+	c, _ := stub(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{errorField: "Empty body"})
+	})
+	_, err := c.RenderPNG(context.Background(), zpl, RenderOptions{})
+	var e *Error
+	if !errors.As(err, &e) {
+		t.Fatalf("want *Error, got %T", err)
+	}
+	if e.ServerMessage != "Empty body" || err.Error() != "HTTP 400: Empty body" {
+		t.Fatalf("raw JSON leaked into the message: %q", err.Error())
+	}
+	if got := serverText([]byte(`{"x":1}`)); got != `{"x":1}` {
+		t.Fatalf("other JSON must pass through, got %q", got)
+	}
+	if got := serverText([]byte(strings.Repeat("y", 900))); len(got) != 500 {
+		t.Fatalf("cap is 500 bytes, got %d", len(got))
+	}
+}
+
 func TestBarcodeWarningIsAFailureNotABarcode(t *testing.T) {
 	// The server answers 200 with an error image and X-Warnings. Passing
 	// that through as a generated barcode would be lying to the caller.

@@ -435,13 +435,10 @@ namespace Labelixa
         private static LabelixaException ErrorFor(int status, byte[] bytes,
             HttpResponseMessage message)
         {
-            // The message is capped: an error is a sentence, and a broken
-            // proxy can answer with a megabyte of HTML.
-            var text = Encoding.UTF8.GetString(bytes);
-            if (text.Length > 500)
-            {
-                text = text.Substring(0, 500);
-            }
+            // Only the sentence of the JSON error answer is kept
+            // (Contract.ServerText), capped: an error is a sentence, and a
+            // broken proxy can answer with a megabyte of HTML.
+            var text = Contract.ServerText(Encoding.UTF8.GetString(bytes));
 
             if (status != 402 && status != 429)
             {

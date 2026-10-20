@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Labelixa;
@@ -280,6 +281,25 @@ internal static class Program
                 Equal(400, error.Status);
                 Equal(true, error.Message.Contains("label too large"));
             }
+        }).ConfigureAwait(false);
+
+        await Test("a JSON error answer keeps only the server's sentence",
+            async () =>
+        {
+            var body = JsonSerializer.Serialize(
+                new Dictionary<string, string> { [Contract.ErrorField] = "Empty body" });
+            var handler = new FakeHandler(HttpStatusCode.BadRequest, body);
+            try
+            {
+                await Client(handler).RenderPngAsync(Zpl).ConfigureAwait(false);
+                throw new InvalidOperationException("400 was swallowed");
+            }
+            catch (LabelixaException error)
+            {
+                Equal("Empty body", error.ServerMessage);
+                Equal("HTTP 400: Empty body", error.Message);
+            }
+            Equal("{\"x\":1}", Contract.ServerText("{\"x\":1}"));
         }).ConfigureAwait(false);
 
         await Test("a long error body is capped", async () =>

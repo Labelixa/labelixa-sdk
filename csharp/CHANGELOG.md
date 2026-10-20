@@ -6,6 +6,17 @@ project uses [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- `LabelixaException.ServerMessage` carries the server's sentence only.
+  The API answers an error with a small JSON object; the client used to
+  pass that JSON through as it came (`HTTP 400: {"...": "..."}`). A body
+  that is not JSON is still passed through as it came, capped at 500
+  characters.
+
+### Added
+- `Contract.ServerText(string)`: the same extraction, for callers that
+  read error bodies themselves.
+
 ### Security
 - The default `HttpClient` no longer follows redirects
   (`AllowAutoRedirect = false`). A followed redirect keeps custom request

@@ -1,6 +1,6 @@
 {
   "name": "labelixa",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Render, validate and convert Zebra ZPL (and EPL/TSPL/CPCL) label code via the Labelixa API — SDK and CI-friendly CLI, no printer required.",
   "type": "module",
   "main": "index.js",
@@ -13,6 +13,7 @@
   },
   "files": [
     "index.js",
+    "contract.js",
     "index.d.ts",
     "bin/labelixa.mjs",
     "README.md",

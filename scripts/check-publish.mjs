@@ -28,6 +28,15 @@ const MARKERS = ["yayımlanmadı", "denetim", "ölçüm"];
 const WORDS = ["sunucu", "yanit", "hata", "hatasi", "kota", "dosya", "istek", "olcum", "denetim", "surum", "yayin", "uretilmedi", "uretildi", "kullanin", "gecersiz", "bilinmeyen", "baslik", "basliklar", "govde", "taban", "arac", "araclar", "sozlesme", "cikti", "girdi", "deger", "uyari", "kayit", "gecmis", "sonuc", "ornek", "yazici", "etiket", "dogrula", "donustur", "bekle", "olcu", "yol", "gerekce", "yorum"];
 const WORD = new RegExp("\\b(?:" + WORDS.join("|") + ")\\b", "i");
 
+// The ONE file exempt from the WORD rule, and only from that rule: the wire
+// vocabulary. Some API field names are Turkish (`quickfix.baslik`,
+// `komutlar`); they are protocol, so renaming them would not translate
+// anything — it would stop the client reading the server's answer. The agent
+// solves this the same way (one `contract.go`), and for the same reason: an
+// exemption pinned to a single file keeps the rule alive everywhere else.
+// Ticket ids, non-English characters and audit markers are STILL checked here.
+const WORD_EXEMPT = new Set(["contract.js"]);
+
 const SKIP_DIRS = new Set(["node_modules", ".git", "test", "scripts", "dist", "out"]);
 const BINARY = new Set([".png", ".jpg", ".gif", ".ico", ".vsix", ".tgz", ".zip", ".whl"]);
 
@@ -67,8 +76,10 @@ for (const file of [...files].sort()) {
     const c = TURKISH.exec(line);
     if (c) problems.push(`${where}: non-English character '${c[0]}'`);
     for (const m of MARKERS) if (line.includes(m)) problems.push(`${where}: marker '${m}'`);
-    const w = WORD.exec(line);
-    if (w) problems.push(`${where}: Turkish word '${w[0]}'`);
+    if (!WORD_EXEMPT.has(rel.split(/[\\/]/).join("/"))) {
+      const w = WORD.exec(line);
+      if (w) problems.push(`${where}: Turkish word '${w[0]}'`);
+    }
   });
 }
 

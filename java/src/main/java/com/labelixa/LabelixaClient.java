@@ -508,7 +508,8 @@ public final class LabelixaClient {
     }
 
     /**
-     * Picks the exception type from the status. The body is capped: an
+     * Picks the exception type from the status. Only the sentence of the
+     * JSON error answer is kept ({@link Contract#serverText}), capped: an
      * error message is a sentence, and a broken proxy can answer with a
      * megabyte of HTML.
      */
@@ -517,7 +518,8 @@ public final class LabelixaClient {
         if (status == 200) {
             return;
         }
-        String message = cap(new String(res.body(), StandardCharsets.UTF_8));
+        String message = cap(Contract.serverText(
+            new String(res.body(), StandardCharsets.UTF_8)));
         if (status == 402 || status == 429) {
             int retry = 60;
             String header = res.headers().firstValue("Retry-After").orElse("");

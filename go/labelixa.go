@@ -47,8 +47,11 @@ const DefaultBaseURL = "https://api.labelixa.com"
 // Languages the API renders and lints. ZPL is the default.
 var Languages = []string{"zpl", "epl", "tspl", "cpcl"}
 
-// Error carries the server's own message verbatim. Wrapping it in a
-// friendlier sentence would hide the only text that says what is wrong.
+// Error carries the server's own message. Wrapping it in a friendlier
+// sentence would hide the only text that says what is wrong. Only the JSON
+// wrapper of an error answer is removed: ServerMessage is the sentence
+// itself, not {"...": "sentence"}. A body of any other shape is kept as
+// it came, capped at 500 bytes.
 type Error struct {
 	Status        int
 	ServerMessage string
@@ -215,9 +218,8 @@ func (c *Client) do(ctx context.Context, method, path string,
 // capped: an error message is a sentence, and a broken proxy can answer
 // with a megabyte of HTML.
 func errorFromResponse(res *http.Response) error {
-	raw, _ := io.ReadAll(io.LimitReader(res.Body, 500))
-	msg := string(raw)
-	base := Error{Status: res.StatusCode, ServerMessage: msg}
+	raw, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
+	base := Error{Status: res.StatusCode, ServerMessage: serverText(raw)}
 	if res.StatusCode == http.StatusPaymentRequired ||
 		res.StatusCode == http.StatusTooManyRequests {
 		retry := 60
@@ -228,6 +230,24 @@ func errorFromResponse(res *http.Response) error {
 			Action: res.Header.Get("X-Quota-Action")}
 	}
 	return &base
+}
+
+// serverText returns the sentence of an API error answer
+// ({"<errorField>": "sentence"}), or the body as it came when it has any
+// other shape. Either way the result is capped at 500 bytes.
+func serverText(raw []byte) string {
+	text := string(raw)
+	var body map[string]json.RawMessage
+	if json.Unmarshal(raw, &body) == nil {
+		var sentence string
+		if field, ok := body[errorField]; ok && json.Unmarshal(field, &sentence) == nil {
+			text = sentence
+		}
+	}
+	if len(text) > 500 {
+		text = strings.ToValidUTF8(text[:500], "")
+	}
+	return text
 }
 
 // RenderOptions selects density, size and which label to draw.

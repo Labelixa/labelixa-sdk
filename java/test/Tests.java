@@ -1,4 +1,5 @@
 import com.labelixa.BarcodeOptions;
+import com.labelixa.Contract;
 import com.labelixa.Json;
 import com.labelixa.LabelixaClient;
 import com.labelixa.LabelixaException;
@@ -276,6 +277,15 @@ public final class Tests {
             equal(400, e.getStatus(), "status");
             equal("ZPL must start with ^XA", e.getServerMessage(), "message");
             equal("HTTP 400: ZPL must start with ^XA", e.getMessage(), "toString form");
+        });
+
+        test("a JSON error answer keeps only the server's sentence", () -> {
+            answer(400, "{\"" + Contract.ERROR_FIELD + "\":\"Empty body\"}");
+            LabelixaException e = expect(LabelixaException.class, () -> client().renderPng(ZPL));
+            equal("Empty body", e.getServerMessage(), "sentence only");
+            equal("HTTP 400: Empty body", e.getMessage(), "toString form");
+            equal("{\"x\":1}", Contract.serverText("{\"x\":1}"), "other JSON as it came");
+            equal("[1]", Contract.serverText("[1]"), "not an object");
         });
 
         test("a long error body is capped", () -> {

@@ -13,6 +13,8 @@
 
 import { createRequire } from "node:module";
 
+import { ERROR_FIELD } from "./contract.js";
+
 const DEFAULT_BASE_URL = "https://api.labelixa.com";
 
 // Trailing slashes are stripped with a loop, not with /\/+$/: that regex
@@ -53,9 +55,29 @@ export class QuotaExceeded extends LabelixaError {
   }
 }
 
+/**
+ * The text of an error answer. The API answers an error with
+ * `{"<ERROR_FIELD>": "sentence"}`; only the sentence is kept, so messages
+ * read `HTTP 400: Empty body` instead of carrying raw JSON. A body of any
+ * other shape (plain text, a proxy's HTML page) is kept as it came.
+ * Capped at 500 characters either way.
+ */
+export function serverText(raw) {
+  let text = String(raw);
+  try {
+    const body = JSON.parse(text);
+    if (body && typeof body === "object" && typeof body[ERROR_FIELD] === "string") {
+      text = body[ERROR_FIELD];
+    }
+  } catch {
+    // Not JSON: keep the raw text.
+  }
+  return text.slice(0, 500);
+}
+
 /** Builds the error for a non-200 response; quota responses get their own class. */
 async function errorFromResponse(response) {
-  const text = (await response.text()).slice(0, 500);
+  const text = serverText(await response.text());
   if (response.status === 402 || response.status === 429) {
     const raw = response.headers.get("Retry-After");
     const retryAfter = Number.parseInt(raw ?? "60", 10);

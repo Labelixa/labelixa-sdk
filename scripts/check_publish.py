@@ -14,7 +14,7 @@ files and the source directory is mirrored publicly) and fails (exit code
 Scanned: every text file under the root except directories named .git,
 node_modules, __pycache__, dist, test, testdata, scripts, bin or obj, Go
 test files (*_test.go), the Business Central test app (core-test) and
-binaries. `contract.go` (and its copies) is exempt from the WORD rule only:
+binaries. `contract.go` (and its copies, e.g. `contract.ts`) is exempt from the WORD rule only:
 it holds the wire vocabulary (JSON keys, legacy command names) that
 existing installations depend on and that cannot be renamed; the other
 rules still apply to it.
@@ -59,8 +59,13 @@ BINARY = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".gz",
           ".exe", ".woff", ".woff2", ".ttf"}
 # Files holding the frozen wire vocabulary: exempt from the WORD rule only.
 # `Contract.kt` is the JetBrains plugin's copy of the same vocabulary;
-# `LBXWire.Codeunit.al` is the Business Central app's.
-WORD_EXEMPT = {"contract.go", "Contract.kt", "LBXWire.Codeunit.al"}
+# `LBXWire.Codeunit.al` is the Business Central app's; `contract.ts` is the
+# n8n node's (API answer field names it renames to English). The SDKs and
+# the Pipedream components keep the same vocabulary (at least the error
+# answer's field name) in `contract.go` / `Contract.php` / `Contract.cs` /
+# `Contract.java` / `contract.mjs`.
+WORD_EXEMPT = {"contract.go", "Contract.kt", "LBXWire.Codeunit.al", "contract.ts",
+               "Contract.php", "Contract.cs", "Contract.java", "contract.mjs"}
 
 
 def _files(root: Path) -> list[Path]:

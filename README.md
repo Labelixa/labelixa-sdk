@@ -75,7 +75,7 @@ label files are linted before they are committed. Add to
 ```yaml
 repos:
   - repo: https://github.com/Labelixa/labelixa-sdk
-    rev: v0.3.2
+    rev: v0.3.3
     hooks:
       - id: labelixa-validate
         # optional: fail on warnings too

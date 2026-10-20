@@ -1,9 +1,14 @@
 export declare class LabelixaError extends Error {
   status: number;
-  /** The server's own error text, verbatim. */
+  /** The server's own error sentence (from the JSON error answer; any other
+   * body verbatim), at most 500 characters. */
   serverMessage: string;
   constructor(status: number, serverMessage: string);
 }
+
+/** The sentence of an API error answer; a body of any other shape is
+ * returned as it came. At most 500 characters. */
+export declare function serverText(raw: string): string;
 
 export declare class QuotaExceeded extends LabelixaError {
   /** Seconds to wait before retrying (from Retry-After). */
